@@ -33,7 +33,8 @@ If you prefer manual Pages settings, you can also enable GitHub Pages from repos
 
 Notes & tips
 - To remove the demo login, edit `index.html` and remove the `#loginModal` block and the initial login check (or set `sessionStorage.setItem('vms_logged_in','true')` in the console).
- - Vendor localStorage keys use the pattern `vendor:vendor_TIMESTAMP`. Each vendor object contains: id, name, address, phone, image (base64 or empty), cameraImage (base64 or empty), createdAt, updatedAt.
+ - Vendor localStorage keys use the pattern `vendor:vendor_TIMESTAMP`. Each vendor object contains: id, name, address, phone, activity (what they do), image (base64 or empty), cameraImage (base64 or empty), createdAt, updatedAt.
+ - Exported CSV includes the following columns: id, name, address, phone, activity, createdAt, updatedAt (images are excluded from CSV).
 - Storing many or large images in localStorage can exhaust quota — consider server-side storage for production.
 
 Troubleshooting
