@@ -117,6 +117,10 @@
           <input id="phoneInput" class="w-full px-3 py-2 border rounded" required />
         </div>
         <div>
+          <label class="block text-sm text-gray-700">What they do (short)</label>
+          <textarea id="activityInput" class="w-full px-3 py-2 border rounded" rows="2" placeholder="E.g. Construction supplier, Catering services, IT support"></textarea>
+        </div>
+        <div>
           <label class="block text-sm text-gray-700">Site Image (optional)</label>
           <div class="flex items-center gap-3">
             <label class="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded cursor-pointer">
@@ -224,9 +228,10 @@
     const formTitle = document.getElementById('formTitle');
     const closeForm = document.getElementById('closeForm');
     const vendorForm = document.getElementById('vendorForm');
-    const nameInput = document.getElementById('nameInput');
-    const addressInput = document.getElementById('addressInput');
-    const phoneInput = document.getElementById('phoneInput');
+  const nameInput = document.getElementById('nameInput');
+  const addressInput = document.getElementById('addressInput');
+  const phoneInput = document.getElementById('phoneInput');
+  const activityInput = document.getElementById('activityInput');
   const imageInput = document.getElementById('imageInput');
   const imagePreview = document.getElementById('imagePreview');
   const removeImageBtn = document.getElementById('removeImageBtn');
@@ -262,6 +267,8 @@
             obj.address = obj.address || '';
             obj.phone = obj.phone || '';
             obj.image = obj.image || '';
+            // activity / what they do
+            obj.activity = obj.activity || obj.whatTheyDo || '';
             // accept older field name `cameraImage` or `capturedImage`
             obj.cameraImage = obj.cameraImage || obj.capturedImage || '';
             obj.createdAt = obj.createdAt || Date.now();
@@ -315,6 +322,12 @@
           nameEl.textContent = v.name;
           addressEl.textContent = v.address;
           phoneEl.textContent = v.phone;
+          // activity / what they do
+          const activityEl = document.createElement('p');
+          activityEl.className = 'text-sm text-gray-700 mt-2 activity';
+          activityEl.textContent = v.activity || '';
+          // insert activity after address/phone
+          phoneEl.insertAdjacentElement('afterend', activityEl);
 
           if (v.image) {
             const img = document.createElement('img');
@@ -424,7 +437,7 @@
       const v = vendors.find(x => x.id === id);
       if (!v) { alert('Vendor not found'); return; }
       // CSV headers and row (exclude image fields to keep CSV compact)
-      const headers = ['id','name','address','phone','createdAt','updatedAt'];
+  const headers = ['id','name','address','phone','activity','createdAt','updatedAt'];
       const row = [v.id, v.name, v.address, v.phone, v.createdAt, v.updatedAt];
       const escape = (s) => `"${String(s || '').replace(/"/g,'""')}"`;
       const csv = headers.join(',') + '\n' + row.map(escape).join(',') + '\n';
@@ -446,6 +459,7 @@
       nameInput.value = '';
       addressInput.value = '';
       phoneInput.value = '';
+      activityInput.value = '';
       imagePreview.src = '';
       imagePreview.classList.add('hidden');
       removeImageBtn.classList.add('hidden');
@@ -467,6 +481,7 @@
       nameInput.value = v.name;
       addressInput.value = v.address;
       phoneInput.value = v.phone;
+      activityInput.value = v.activity || '';
       if (v.image) {
         imagePreview.src = v.image;
         imagePreview.classList.remove('hidden');
@@ -498,6 +513,7 @@
       nameInput.value = '';
       addressInput.value = '';
       phoneInput.value = '';
+      activityInput.value = '';
       imagePreview.src = '';
       imagePreview.classList.add('hidden');
       removeImageBtn.classList.add('hidden');
@@ -536,6 +552,7 @@
         vendor.name = name;
         vendor.address = address;
         vendor.phone = phone;
+        vendor.activity = activityInput.value.trim();
         vendor.updatedAt = now;
         // set image fields explicitly (empty string if removed)
         vendor.image = imagePreview.src || '';
@@ -549,6 +566,7 @@
           address,
           phone,
           image: imagePreview.src || '',
+          activity: activityInput.value.trim() || '',
           cameraImage: cameraPreview.src || '',
           createdAt: now,
           updatedAt: now
@@ -648,7 +666,7 @@
       if (!all.length) { alert('No vendors to export'); return; }
       const headers = ['id','name','address','phone','createdAt','updatedAt'];
       const escape = (s) => `"${String(s || '').replace(/"/g,'""')}"`;
-      const rows = all.map(v => [v.id, v.name, v.address, v.phone, v.createdAt, v.updatedAt].map(escape).join(','));
+  const rows = all.map(v => [v.id, v.name, v.address, v.phone, v.activity || '', v.createdAt, v.updatedAt].map(escape).join(','));
       const csv = headers.join(',') + '\n' + rows.join('\n') + '\n';
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
