@@ -6,8 +6,9 @@ Features
 - Add / edit / delete vendors (name, address, phone, optional site image)
 - Search/filter vendors by name / address / phone
 - Responsive card grid layout (mobile-first)
-- Export vendors to JSON
-- Images stored as base64 (max 2 MB)
+ - Responsive card grid layout (mobile-first)
+ - Export vendors to CSV (images excluded from CSV)
+ - Images stored as base64 (max 2 MB)
 - Static demo login (admin / admin123) — stored in sessionStorage
 
 Quick deploy (recommended)
@@ -32,7 +33,7 @@ If you prefer manual Pages settings, you can also enable GitHub Pages from repos
 
 Notes & tips
 - To remove the demo login, edit `index.html` and remove the `#loginModal` block and the initial login check (or set `sessionStorage.setItem('vms_logged_in','true')` in the console).
-- Vendor localStorage keys use the pattern `vendor:vendor_TIMESTAMP`. Each vendor object contains: id, name, address, phone, image (base64 or empty), createdAt, updatedAt.
+ - Vendor localStorage keys use the pattern `vendor:vendor_TIMESTAMP`. Each vendor object contains: id, name, address, phone, image (base64 or empty), cameraImage (base64 or empty), createdAt, updatedAt.
 - Storing many or large images in localStorage can exhaust quota — consider server-side storage for production.
 
 Troubleshooting
