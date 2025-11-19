@@ -28,7 +28,11 @@
       <div class="flex items-center gap-2">
         <button id="exportBtn" class="hidden md:inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 px-3 py-2 rounded">
           <i data-lucide="download" class="w-4 h-4"></i>
-          <span class="text-sm font-medium">Export</span>
+          <span class="text-sm font-medium">Export All</span>
+        </button>
+        <button id="exportSelectedBtn" class="hidden md:inline-flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 px-3 py-2 rounded">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span class="text-sm font-medium">Export Selected</span>
         </button>
         <button id="addBtn" class="inline-flex items-center gap-2 bg-white text-blue-600 hover:bg-blue-50 px-3 py-2 rounded">
           <i data-lucide="plus" class="w-4 h-4"></i>
@@ -121,9 +125,17 @@
               <input id="imageInput" type="file" accept="image/*" class="hidden" />
             </label>
             <button id="removeImageBtn" type="button" class="text-sm text-red-600 hidden">Remove</button>
+            <!-- Camera capture (separate from upload) -->
+            <label class="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded cursor-pointer">
+              <i data-lucide="camera" class="w-4 h-4"></i>
+              Take Photo
+              <input id="cameraInput" type="file" accept="image/*" capture="environment" class="hidden" />
+            </label>
+            <button id="removeCameraBtn" type="button" class="text-sm text-red-600 hidden">Remove Photo</button>
           </div>
           <img id="imagePreview" src="" alt="Preview" class="mt-3 w-full max-h-56 object-cover rounded hidden" />
-          <p id="imageHint" class="text-xs text-gray-400 mt-1">Max size: 2MB. Images stored as base64 in localStorage.</p>
+          <img id="cameraPreview" src="" alt="Camera Preview" class="mt-3 w-full max-h-40 object-cover rounded hidden" />
+          <p id="imageHint" class="text-xs text-gray-400 mt-1">Max size: 2MB. Images stored as base64 in localStorage. "Take Photo" uses your device camera when available.</p>
         </div>
         <div class="flex gap-3">
           <button id="cancelBtn" type="button" class="flex-1 px-3 py-2 border rounded">Cancel</button>
@@ -137,11 +149,21 @@
   <template id="vendorCardTpl">
     <article class="bg-white rounded-lg shadow hover:shadow-lg overflow-hidden transition">
       <div class="card-image"></div>
-      <div class="p-4">
+        <div class="p-4">
         <h4 class="font-semibold name text-lg"></h4>
         <p class="text-sm text-gray-600 address mt-1"></p>
         <p class="text-blue-600 font-medium phone mt-2"></p>
-        <div class="flex gap-2 mt-3">
+        <div class="flex gap-2 mt-3 items-center">
+          <button class="callBtn flex-none flex items-center justify-center gap-2 px-2 py-1 bg-green-50 text-green-600 rounded text-sm" title="Call">
+            <i data-lucide="phone" class="w-4 h-4"></i>
+          </button>
+          <button class="waBtn flex-none flex items-center justify-center gap-2 px-2 py-1 bg-green-50 text-green-700 rounded text-sm" title="WhatsApp">
+            <i data-lucide="message-circle" class="w-4 h-4"></i>
+          </button>
+          <button class="exportVendorBtn flex-none flex items-center justify-center gap-2 px-2 py-1 bg-gray-100 text-gray-700 rounded text-sm" title="Export vendor">
+            <i data-lucide="download" class="w-4 h-4"></i>
+          </button>
+          <div class="flex-1"></div>
           <button class="editBtn flex-1 flex items-center justify-center gap-2 px-2 py-2 bg-blue-50 text-blue-600 rounded"> <i data-lucide="edit-2" class="w-4 h-4"></i> Edit</button>
           <button class="deleteBtn flex-1 flex items-center justify-center gap-2 px-2 py-2 bg-red-50 text-red-600 rounded"> <i data-lucide="trash-2" class="w-4 h-4"></i> Delete</button>
         </div>
@@ -187,7 +209,7 @@
     });
 
     // App Elements
-    const loadingEl = document.getElementById('loading');
+  const loadingEl = document.getElementById('loading');
     const emptyState = document.getElementById('emptyState');
     const vendorGrid = document.getElementById('vendorGrid');
     const vendorTpl = document.getElementById('vendorCardTpl');
@@ -205,16 +227,22 @@
     const nameInput = document.getElementById('nameInput');
     const addressInput = document.getElementById('addressInput');
     const phoneInput = document.getElementById('phoneInput');
-    const imageInput = document.getElementById('imageInput');
-    const imagePreview = document.getElementById('imagePreview');
-    const removeImageBtn = document.getElementById('removeImageBtn');
+  const imageInput = document.getElementById('imageInput');
+  const imagePreview = document.getElementById('imagePreview');
+  const removeImageBtn = document.getElementById('removeImageBtn');
+  const cameraInput = document.getElementById('cameraInput');
+  const cameraPreview = document.getElementById('cameraPreview');
+  const removeCameraBtn = document.getElementById('removeCameraBtn');
     const cancelBtn = document.getElementById('cancelBtn');
+
+  const exportSelectedBtn = document.getElementById('exportSelectedBtn');
 
     const IMAGE_MAX_BYTES = 2_000_000; // 2MB
 
-    // State
-    let vendors = [];
-    let editingId = null; // null means creating
+  // State
+  let vendors = [];
+  let editingId = null; // null means creating
+  let selectedVendorId = null; // currently selected vendor for quick actions
 
     // Storage helpers
     function storageKey(id) { return `vendor:${id}`; }
@@ -234,6 +262,8 @@
             obj.address = obj.address || '';
             obj.phone = obj.phone || '';
             obj.image = obj.image || '';
+            // accept older field name `cameraImage` or `capturedImage`
+            obj.cameraImage = obj.cameraImage || obj.capturedImage || '';
             obj.createdAt = obj.createdAt || Date.now();
             obj.updatedAt = obj.updatedAt || obj.createdAt;
             result.push(obj);
@@ -277,6 +307,9 @@
           const phoneEl = node.querySelector('.phone');
           const editBtn = node.querySelector('.editBtn');
           const deleteBtn = node.querySelector('.deleteBtn');
+          const callBtn = node.querySelector('.callBtn');
+          const waBtn = node.querySelector('.waBtn');
+          const exportVendorBtn = node.querySelector('.exportVendorBtn');
           const imageContainer = node.querySelector('.card-image');
 
           nameEl.textContent = v.name;
@@ -292,9 +325,43 @@
           } else {
             imageContainer.innerHTML = '<div class="w-full h-36 bg-gray-100 flex items-center justify-center text-gray-400">No image</div>';
           }
+          // show camera-captured thumbnail if present (kept separate from main site image)
+          if (v.cameraImage) {
+            const camThumb = document.createElement('img');
+            camThumb.src = v.cameraImage;
+            camThumb.alt = v.name + ' (photo)';
+            camThumb.className = 'mt-2 w-full sm:w-32 h-20 object-cover rounded';
+            imageContainer.appendChild(camThumb);
+          }
 
-          editBtn.addEventListener('click', () => openEditForm(v.id));
-          deleteBtn.addEventListener('click', () => handleDelete(v.id));
+          // preserve selection visual if this vendor is selected
+          if (selectedVendorId && selectedVendorId === v.id) {
+            article.classList.add('ring-2', 'ring-blue-300');
+          }
+
+          // selection: clicking the card (not buttons) toggles selection
+          article.addEventListener('click', (ev) => {
+            // ignore if a button inside was clicked
+            if (ev.target.closest('button')) return;
+            if (selectedVendorId === v.id) {
+              selectedVendorId = null;
+              article.classList.remove('ring-2', 'ring-blue-300');
+            } else {
+              // clear previous selection visuals
+              const prev = vendorGrid.querySelector('article.ring-2');
+              if (prev) prev.classList.remove('ring-2', 'ring-blue-300');
+              selectedVendorId = v.id;
+              article.classList.add('ring-2', 'ring-blue-300');
+            }
+            // toggle header Export Selected visibility
+            exportSelectedBtn.classList.toggle('hidden', !selectedVendorId);
+          });
+
+          editBtn.addEventListener('click', (e) => { e.stopPropagation(); openEditForm(v.id); });
+          deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); handleDelete(v.id); });
+          callBtn.addEventListener('click', (e) => { e.stopPropagation(); openCall(v.phone); });
+          waBtn.addEventListener('click', (e) => { e.stopPropagation(); openWhatsApp(v.phone); });
+          exportVendorBtn.addEventListener('click', (e) => { e.stopPropagation(); exportVendor(v.id); });
 
           vendorGrid.appendChild(node);
         });
@@ -304,6 +371,42 @@
       exportBtn.classList.toggle('hidden', !has);
       exportBtnMobile.classList.toggle('hidden', !has);
       document.getElementById('exportBtn')?.classList.toggle('hidden', !has);
+    }
+
+    // Helper: sanitize phone number for tel: and wa.me links
+    function sanitizePhone(phone) {
+      if (!phone) return '';
+      // remove spaces, parentheses, dashes, plus signs for wa.me (wa requires country code without '+')
+      return phone.replace(/[^0-9+]/g, '');
+    }
+
+    function openCall(phone) {
+      const sanitized = sanitizePhone(phone);
+      if (!sanitized) return alert('No phone number available');
+      window.location.href = `tel:${sanitized}`;
+    }
+
+    function openWhatsApp(phone) {
+      let sanitized = sanitizePhone(phone);
+      if (!sanitized) return alert('No phone number available');
+      // remove leading + if present for wa.me
+      if (sanitized.startsWith('+')) sanitized = sanitized.slice(1);
+      const url = `https://wa.me/${sanitized}`;
+      window.open(url, '_blank');
+    }
+
+    function exportVendor(id) {
+      const v = vendors.find(x => x.id === id);
+      if (!v) { alert('Vendor not found'); return; }
+      const blob = new Blob([JSON.stringify(v, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vendor_${v.name.replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_\-]/g,'') || v.id}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
     }
 
     // CRUD handlers
@@ -317,6 +420,11 @@
       imagePreview.classList.add('hidden');
       removeImageBtn.classList.add('hidden');
       imageInput.value = '';
+      // clear camera preview for new form
+      cameraPreview.src = '';
+      cameraPreview.classList.add('hidden');
+      removeCameraBtn.classList.add('hidden');
+      cameraInput.value = '';
       formModal.style.display = 'flex';
       lucide && lucide.createIcons();
     }
@@ -339,12 +447,36 @@
         removeImageBtn.classList.add('hidden');
       }
       imageInput.value = '';
+      // camera image
+      if (v.cameraImage) {
+        cameraPreview.src = v.cameraImage;
+        cameraPreview.classList.remove('hidden');
+        removeCameraBtn.classList.remove('hidden');
+      } else {
+        cameraPreview.src = '';
+        cameraPreview.classList.add('hidden');
+        removeCameraBtn.classList.add('hidden');
+      }
       formModal.style.display = 'flex';
       lucide && lucide.createIcons();
     }
 
     function closeFormModal() {
       formModal.style.display = 'none';
+      // reset editing state and form contents
+      editingId = null;
+      nameInput.value = '';
+      addressInput.value = '';
+      phoneInput.value = '';
+      imagePreview.src = '';
+      imagePreview.classList.add('hidden');
+      removeImageBtn.classList.add('hidden');
+      imageInput.value = '';
+      // reset camera-related fields
+      cameraPreview.src = '';
+      cameraPreview.classList.add('hidden');
+      removeCameraBtn.classList.add('hidden');
+      cameraInput.value = '';
     }
 
     async function handleDelete(id) {
@@ -374,7 +506,9 @@
         vendor.address = address;
         vendor.phone = phone;
         vendor.updatedAt = now;
-        if (imagePreview.src) vendor.image = imagePreview.src;
+        // set image fields explicitly (empty string if removed)
+        vendor.image = imagePreview.src || '';
+        vendor.cameraImage = cameraPreview.src || '';
         saveVendorToStorage(vendor);
       } else {
         const id = generateId();
@@ -384,6 +518,7 @@
           address,
           phone,
           image: imagePreview.src || '',
+          cameraImage: cameraPreview.src || '',
           createdAt: now,
           updatedAt: now
         };
@@ -412,11 +547,48 @@
       reader.readAsDataURL(file);
     });
 
+    // camera capture input handling (separate image)
+    cameraInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      if (file.size > IMAGE_MAX_BYTES) {
+        alert('Image size should be less than 2MB');
+        cameraInput.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        cameraPreview.src = reader.result;
+        cameraPreview.classList.remove('hidden');
+        removeCameraBtn.classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    });
+
     removeImageBtn.addEventListener('click', () => {
       imagePreview.src = '';
       imagePreview.classList.add('hidden');
       removeImageBtn.classList.add('hidden');
       imageInput.value = '';
+    });
+
+    removeCameraBtn.addEventListener('click', () => {
+      cameraPreview.src = '';
+      cameraPreview.classList.add('hidden');
+      removeCameraBtn.classList.add('hidden');
+      cameraInput.value = '';
+    });
+
+    // close modal when clicking outside content
+    formModal.addEventListener('click', (e) => {
+      if (e.target === formModal) closeFormModal();
+    });
+
+    // close modal with Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (formModal.style.display === 'flex') closeFormModal();
+      }
     });
 
     cancelBtn.addEventListener('click', () => closeFormModal());
@@ -455,6 +627,15 @@
 
     exportBtn.addEventListener('click', exportAll);
     exportBtnMobile.addEventListener('click', exportAll);
+    exportSelectedBtn.addEventListener('click', () => {
+      if (!selectedVendorId) return alert('No vendor selected');
+      exportVendor(selectedVendorId);
+      // clear selection after export
+      const prev = vendorGrid.querySelector('article.ring-2');
+      if (prev) prev.classList.remove('ring-2', 'ring-blue-300');
+      selectedVendorId = null;
+      exportSelectedBtn.classList.add('hidden');
+    });
 
     // Initial app boot
     function initApp() {
