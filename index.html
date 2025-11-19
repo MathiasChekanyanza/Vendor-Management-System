@@ -357,6 +357,10 @@
             exportSelectedBtn.classList.toggle('hidden', !selectedVendorId);
           });
 
+          // ensure call/whatsapp icons render even if lucide didn't process them
+          callBtn.innerHTML = getInlineSvg('phone');
+          waBtn.innerHTML = getInlineSvg('message-circle');
+
           editBtn.addEventListener('click', (e) => { e.stopPropagation(); openEditForm(v.id); });
           deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); handleDelete(v.id); });
           callBtn.addEventListener('click', (e) => { e.stopPropagation(); openCall(v.phone); });
@@ -375,6 +379,23 @@
     }
 
     // no single-vendor UI state helper (allow multiple vendors)
+
+    // Provide inline SVGs for a couple of icons (fallback if lucide isn't applied)
+    function getInlineSvg(name) {
+      if (name === 'phone') {
+        return `
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.86 19.86 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.86 19.86 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12 1.2.34 2.38.63 3.53a2 2 0 0 1-.45 2.11L8.09 11.91a16 16 0 0 0 6 6l1.55-1.55a2 2 0 0 1 2.11-.45c1.15.29 2.33.51 3.53.63A2 2 0 0 1 22 16.92z"/>
+          </svg>`;
+      }
+      if (name === 'message-circle') {
+        return `
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7A8.38 8.38 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.5 8.5 0 0 1 21 11.5z"/>
+          </svg>`;
+      }
+      return '';
+    }
 
     // Helper: sanitize phone number for tel: and wa.me links
     function sanitizePhone(phone) {
