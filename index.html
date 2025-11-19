@@ -38,7 +38,6 @@
           <i data-lucide="plus" class="w-4 h-4"></i>
           <span class="text-sm font-medium">Add Vendor</span>
         </button>
-        <span id="singleVendorNote" class="ml-3 text-sm text-yellow-100 hidden">Only one vendor allowed — use Edit</span>
         <button id="logoutBtn" class="ml-2 hidden bg-white text-blue-600 hover:bg-blue-50 px-3 py-2 rounded text-sm">Logout</button>
       </div>
     </div>
@@ -217,7 +216,6 @@
 
   const addBtn = document.getElementById('addBtn');
   const addBtnMobile = document.getElementById('addBtnMobile');
-  const singleVendorNote = document.getElementById('singleVendorNote');
     const exportBtn = document.getElementById('exportBtn');
     const exportBtnMobile = document.getElementById('exportBtnMobile');
     const searchInput = document.getElementById('searchInput');
@@ -373,28 +371,10 @@
       exportBtn.classList.toggle('hidden', !has);
       exportBtnMobile.classList.toggle('hidden', !has);
       document.getElementById('exportBtn')?.classList.toggle('hidden', !has);
-      // Update Add button state based on current vendor count
-      updateAddButtonState(list.length);
+  // no single-vendor restriction: keep Add available
     }
 
-    // Manage UI state for allowing only a single vendor
-    function updateAddButtonState(count) {
-      const hasVendor = count > 0;
-      // disable add buttons if a vendor already exists
-      if (hasVendor) {
-        addBtn.setAttribute('disabled', 'true');
-        addBtn.classList.add('opacity-50', 'cursor-not-allowed');
-        addBtnMobile.setAttribute('disabled', 'true');
-        addBtnMobile.classList.add('opacity-50', 'cursor-not-allowed');
-        singleVendorNote.classList.remove('hidden');
-      } else {
-        addBtn.removeAttribute('disabled');
-        addBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-        addBtnMobile.removeAttribute('disabled');
-        addBtnMobile.classList.remove('opacity-50', 'cursor-not-allowed');
-        singleVendorNote.classList.add('hidden');
-      }
-    }
+    // no single-vendor UI state helper (allow multiple vendors)
 
     // Helper: sanitize phone number for tel: and wa.me links
     function sanitizePhone(phone) {
@@ -510,8 +490,7 @@
       deleteVendorFromStorage(id);
       vendors = loadVendorsFromStorage();
       applySearchFilter();
-      // Update add button state after delete so adding becomes available again
-      updateAddButtonState(vendors.length);
+  // No single-vendor enforcement; Add buttons remain available
     }
 
     function generateId() { return `vendor_${Date.now()}`; }
@@ -524,11 +503,6 @@
       if (!name || !address || !phone) { alert('Please fill in required fields'); return; }
 
       const now = Date.now();
-      // If not editing and there is already a vendor, switch to editing the existing vendor
-      if (!editingId && vendors.length > 0) {
-        editingId = vendors[0].id;
-      }
-
       if (editingId) {
         const vendor = vendors.find(v=>v.id===editingId);
         if (!vendor) { alert('Vendor not found'); return; }
@@ -623,23 +597,8 @@
 
     cancelBtn.addEventListener('click', () => closeFormModal());
     closeForm.addEventListener('click', () => closeFormModal());
-    addBtn.addEventListener('click', () => {
-      // If a vendor already exists, open the edit form for that vendor instead of creating a new one
-      vendors = loadVendorsFromStorage();
-      if (vendors.length > 0) {
-        openEditForm(vendors[0].id);
-      } else {
-        openAddForm();
-      }
-    });
-    addBtnMobile.addEventListener('click', () => {
-      vendors = loadVendorsFromStorage();
-      if (vendors.length > 0) {
-        openEditForm(vendors[0].id);
-      } else {
-        openAddForm();
-      }
-    });
+    addBtn.addEventListener('click', () => openAddForm());
+    addBtnMobile.addEventListener('click', () => openAddForm());
 
     // Search & filter
     function applySearchFilter() {
